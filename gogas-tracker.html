@@ -545,6 +545,7 @@ function renderCustomers() {
       <td><div class="td-actions">
         <button class="btn" onclick="openDeliveryFor('${c.id}')"><i class="ti ti-truck"></i> Supply</button>
         <button class="btn" onclick="openEmptyFor('${c.id}')"><i class="ti ti-refresh"></i> Empty</button>
+        <button class="btn" onclick="openEditCustomer('${c.id}')" title="Edit"><i class="ti ti-edit"></i></button>
       </div></td>
     </tr>`).join('')}</tbody></table>`;
 }
@@ -616,11 +617,40 @@ function openAddCustomer() {
     </div>
     <div class="form-row">
       <div class="field"><label>Area / locality</label><input id="m-area" placeholder="e.g. Adyar"></div>
-      <div class="field"><label>Initial full cylinders</label><input id="m-full" type="number" min="0" value="0"></div>
+      <div class="field"></div>
     </div>
+    <div class="form-row">
+      <div class="field"><label>Full cylinders with customer</label><input id="m-full" type="number" min="0" value="0"></div>
+      <div class="field"><label>Empties pending collection</label><input id="m-empties" type="number" min="0" value="0"></div>
+    </div>
+    <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;margin-top:-6px">Set empties if this customer already has cylinders to return</div>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeModal()">Cancel</button>
       <button class="btn-save" id="m-submit" onclick="addCustomer()"><i class="ti ti-user-plus"></i> Add Customer</button>
+    </div>`);
+}
+
+function openEditCustomer(cid) {
+  const c = STATE.customers.find(x => x.id === cid);
+  openModal(`<div class="modal-title">Edit customer</div>
+    <div class="form-row">
+      <div class="field"><label>Name</label><input id="m-name" value="${c.name}" autofocus></div>
+      <div class="field"><label>Phone</label><input id="m-phone" value="${c.phone||''}" type="tel"></div>
+    </div>
+    <div class="form-row">
+      <div class="field"><label>Area / locality</label><input id="m-area" value="${c.area||''}"></div>
+      <div class="field"></div>
+    </div>
+    <div style="background:var(--amber-light);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:10px;font-size:12px;color:var(--amber-dark)">
+      <strong>Correct cylinder counts below</strong> if the numbers shown are wrong
+    </div>
+    <div class="form-row">
+      <div class="field"><label>Full cylinders with customer</label><input id="m-full" type="number" min="0" value="${c.fullCylinders}"></div>
+      <div class="field"><label>Empties pending collection</label><input id="m-empties" type="number" min="0" value="${c.emptiesPending}"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-save" id="m-submit" onclick="updateCustomer('${cid}')"><i class="ti ti-check"></i> Save Changes</button>
     </div>`);
 }
 
@@ -630,14 +660,32 @@ async function addCustomer() {
   const phone = document.getElementById('m-phone').value.trim();
   const area = document.getElementById('m-area').value.trim();
   const full = parseInt(document.getElementById('m-full').value) || 0;
+  const empties = parseInt(document.getElementById('m-empties').value) || 0;
   if (!name || !phone) { showToast('Name and phone are required', 'err'); return; }
   setBusy(true, 'Saving…'); busy = true;
   try {
-    const r = await apiCall({ action: 'addCustomer', name, phone, area, fullCylinders: full });
+    const r = await apiCall({ action: 'addCustomer', name, phone, area, fullCylinders: full, emptiesPending: empties });
     if (r.error) throw new Error(r.error);
     showToast('Customer added!', 'ok');
     closeModal(); await loadAll();
   } catch (e) { showToast('Error: ' + e.message, 'err'); setBusy(false, '<i class="ti ti-user-plus"></i> Add Customer'); busy = false; }
+}
+
+async function updateCustomer(cid) {
+  if (busy) return;
+  const name = document.getElementById('m-name').value.trim();
+  const phone = document.getElementById('m-phone').value.trim();
+  const area = document.getElementById('m-area').value.trim();
+  const full = parseInt(document.getElementById('m-full').value) || 0;
+  const empties = parseInt(document.getElementById('m-empties').value) || 0;
+  if (!name) { showToast('Name is required', 'err'); return; }
+  setBusy(true, 'Saving…'); busy = true;
+  try {
+    const r = await apiCall({ action: 'updateCustomer', id: cid, name, phone, area, fullCylinders: full, emptiesPending: empties });
+    if (r.error) throw new Error(r.error);
+    showToast('Customer updated!', 'ok');
+    closeModal(); await loadAll();
+  } catch (e) { showToast('Error: ' + e.message, 'err'); setBusy(false, '<i class="ti ti-check"></i> Save Changes'); busy = false; }
 }
 
 function openDelivery() {
