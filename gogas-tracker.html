@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0F6E56">
+<meta name="description" content="GoGas LPG Cylinder Tracker — manage customer cylinder supply and empty returns">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="GoGas">
+<title>GoGas Cylinder Tracker</title>
+<link rel="manifest" href="gogas-manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<style>
+  :root {
+    --green: #1D9E75;
+    --green-dark: #0F6E56;
+    --green-light: #E1F5EE;
+    --green-mid: #9FE1CB;
+    --amber: #EF9F27;
+    --amber-light: #FAEEDA;
+    --amber-dark: #854F0B;
+    --red: #E24B4A;
+    --red-light: #FCEBEB;
+    --red-dark: #A32D2D;
+    --bg: #F7F8F6;
+    --surface: #FFFFFF;
+    --border: rgba(0,0,0,0.08);
+    --border-mid: rgba(0,0,0,0.14);
+    --text: #1A1A1A;
+    --text-muted: #6B7070;
+    --text-hint: #9EA5A3;
+    --radius: 12px;
+    --radius-sm: 8px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #111714;
+      --surface: #1C211E;
+      --border: rgba(255,255,255,0.08);
+      --border-mid: rgba(255,255,255,0.14);
+      --text: #F0F4F2;
+      --text-muted: #8A9490;
+      --text-hint: #5A6560;
+      --green-light: #0D3326;
+      --amber-light: #2A1E08;
+      --red-light: #2A0F0F;
+    }
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { font-size: 16px; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Header */
+  .header {
+    background: var(--green-dark);
+    color: #fff;
+    padding: 0 1.25rem;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+  }
+  .header-inner {
+    max-width: 900px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 56px;
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  .logo-icon {
+    width: 32px; height: 32px;
+    background: rgba(255,255,255,0.18);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 17px;
+  }
+  .header-actions { display: flex; gap: 8px; }
+  .btn-header {
+    padding: 6px 14px;
+    border-radius: var(--radius-sm);
+    border: 1.5px solid rgba(255,255,255,0.3);
+    background: rgba(255,255,255,0.12);
+    color: #fff;
+    font-size: 13px;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex; align-items: center; gap: 6px;
+    transition: background 0.15s;
+  }
+  .btn-header:hover { background: rgba(255,255,255,0.22); }
+  .btn-header.primary {
+    background: #fff;
+    color: var(--green-dark);
+    border-color: #fff;
+  }
+  .btn-header.primary:hover { background: #e8f5f0; }
+
+  /* Sync bar */
+  .sync-bar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 6px 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+  .sync-bar-inner { max-width: 900px; margin: 0 auto; width: 100%; display: flex; align-items: center; gap: 7px; }
+  .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
+  .sync-dot.loading { background: var(--amber); animation: pulse 1s infinite; }
+  .sync-dot.error { background: var(--red); }
+  @keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.3} }
+
+  /* Main layout */
+  .main { max-width: 900px; margin: 0 auto; padding: 1.25rem; }
+
+  /* Metric cards */
+  .metrics {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-bottom: 1.25rem;
+  }
+  @media (max-width: 600px) { .metrics { grid-template-columns: repeat(2, 1fr); } }
+  .metric {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    box-shadow: var(--shadow);
+  }
+  .metric-val { font-size: 26px; font-weight: 600; color: var(--text); line-height: 1; }
+  .metric-lbl { font-size: 12px; color: var(--text-muted); margin-top: 5px; }
+  .metric-val.green { color: var(--green); }
+  .metric-val.amber { color: var(--amber-dark); }
+  .metric-val.red { color: var(--red-dark); }
+
+  /* Tabs */
+  .tabs {
+    display: flex;
+    gap: 2px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 4px;
+    margin-bottom: 1rem;
+    box-shadow: var(--shadow);
+  }
+  .tab {
+    flex: 1;
+    padding: 8px 6px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 13px;
+    font-family: 'DM Sans', sans-serif;
+    color: var(--text-muted);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center; gap: 5px;
+    transition: background 0.12s, color 0.12s;
+    font-weight: 500;
+  }
+  .tab:hover { background: var(--bg); color: var(--text); }
+  .tab.active { background: var(--green-dark); color: #fff; }
+  .section { display: none; }
+  .section.active { display: block; }
+
+  /* Cards */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    margin-bottom: 1rem;
+  }
+  .card-header {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+
+  /* Filter bar */
+  .filter-bar { display: flex; gap: 8px; padding: 12px 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .filter-bar input, .filter-bar select {
+    flex: 1; min-width: 120px; max-width: 200px;
+    padding: 7px 10px;
+    border: 1px solid var(--border-mid);
+    border-radius: var(--radius-sm);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 13px;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .filter-bar input:focus, .filter-bar select:focus { outline: 2px solid var(--green); outline-offset: -1px; }
+
+  /* Table */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th {
+    text-align: left;
+    color: var(--text-muted);
+    font-weight: 500;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  td { padding: 11px 14px; border-bottom: 1px solid var(--border); color: var(--text); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--bg); }
+
+  /* Badges */
+  .badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    font-family: 'DM Mono', monospace;
+  }
+  .badge-full { background: var(--green-light); color: var(--green-dark); }
+  .badge-zero { background: var(--bg); color: var(--text-muted); border: 1px solid var(--border-mid); }
+  .badge-empty { background: var(--amber-light); color: var(--amber-dark); }
+  .badge-due { background: var(--red-light); color: var(--red-dark); }
+  .badge-supply { background: var(--green-light); color: var(--green-dark); }
+  .badge-return { background: var(--amber-light); color: var(--amber-dark); }
+
+  /* Action buttons */
+  .btn { padding: 6px 12px; border: 1px solid var(--border-mid); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); font-size: 12px; font-family: 'DM Sans', sans-serif; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; transition: background 0.12s; }
+  .btn:hover { background: var(--bg); }
+  .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+  .btn-sm-green { background: var(--green); color: #fff; border-color: var(--green); }
+  .btn-sm-green:hover { background: var(--green-dark); border-color: var(--green-dark); }
+  .td-actions { display: flex; gap: 5px; }
+
+  /* Empty state */
+  .empty-state { padding: 2.5rem; text-align: center; color: var(--text-muted); font-size: 14px; }
+  .empty-state i { font-size: 28px; display: block; margin-bottom: 8px; color: var(--green-mid); }
+
+  /* Log */
+  .log-entry { display: flex; gap: 12px; align-items: flex-start; padding: 10px 16px; border-bottom: 1px solid var(--border); }
+  .log-entry:last-child { border-bottom: none; }
+  .log-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; }
+  .log-dot.supply { background: var(--green); }
+  .log-dot.empty { background: var(--amber); }
+  .log-text { font-size: 13px; color: var(--text); }
+  .log-time { font-size: 11px; color: var(--text-hint); margin-top: 2px; font-family: 'DM Mono', monospace; }
+
+  /* Modal */
+  .modal-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.42);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--surface);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    padding: 1.5rem;
+    width: 100%;
+    max-width: 440px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+    animation: slideUp 0.18s ease;
+  }
+  @keyframes slideUp { from { transform: translateY(16px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  .modal-title { font-size: 16px; font-weight: 600; margin-bottom: 1.25rem; color: var(--text); }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+  .form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+  .field label { font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 4px; font-weight: 500; }
+  .field input, .field select {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--border-mid);
+    border-radius: var(--radius-sm);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 13px;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .field input:focus, .field select:focus { outline: 2px solid var(--green); outline-offset: -1px; border-color: transparent; }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 1.25rem; }
+  .btn-cancel { padding: 8px 18px; border: 1px solid var(--border-mid); border-radius: var(--radius-sm); background: none; color: var(--text-muted); font-size: 13px; font-family: 'DM Sans', sans-serif; cursor: pointer; }
+  .btn-cancel:hover { background: var(--bg); }
+  .btn-save { padding: 8px 18px; border: none; border-radius: var(--radius-sm); background: var(--green); color: #fff; font-size: 13px; font-weight: 600; font-family: 'DM Sans', sans-serif; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+  .btn-save:hover { background: var(--green-dark); }
+  .btn-save:disabled { background: var(--green-mid); cursor: not-allowed; }
+  .spinner { display: inline-block; width: 13px; height: 13px; border: 2px solid rgba(255,255,255,0.4); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Toast */
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: #1A1A1A; color: #fff;
+    padding: 10px 20px; border-radius: 24px;
+    font-size: 13px; font-weight: 500;
+    opacity: 0; transition: opacity 0.25s;
+    pointer-events: none; z-index: 999;
+    white-space: nowrap;
+  }
+  .toast.ok { background: var(--green-dark); }
+  .toast.err { background: var(--red-dark); }
+  .toast.show { opacity: 1; }
+
+  /* Install banner */
+  .install-banner {
+    display: none;
+    background: var(--green-dark);
+    color: #fff;
+    padding: 10px 1.25rem;
+    font-size: 13px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .install-banner.visible { display: flex; }
+  .install-banner button { padding: 5px 14px; border-radius: var(--radius-sm); border: 1.5px solid rgba(255,255,255,0.5); background: rgba(255,255,255,0.15); color: #fff; font-size: 12px; font-family: 'DM Sans', sans-serif; cursor: pointer; }
+  .install-banner button.primary-install { background: #fff; color: var(--green-dark); border-color: #fff; font-weight: 600; }
+
+  @media (max-width: 480px) {
+    .header-inner { height: 52px; }
+    .tab span { display: none; }
+    .tab i { font-size: 18px; }
+    .main { padding: 0.875rem; }
+  }
+</style>
+</head>
+<body>
+
+<div id="installBanner" class="install-banner">
+  <span><i class="ti ti-download" style="margin-right:6px"></i>Install GoGas as an app on your device</span>
+  <div style="display:flex;gap:8px">
+    <button onclick="dismissInstall()">Later</button>
+    <button class="primary-install" onclick="installApp()">Install</button>
+  </div>
+</div>
+
+<header class="header">
+  <div class="header-inner">
+    <div class="logo">
+      <div class="logo-icon"><i class="ti ti-flame" style="color:#fff;font-size:18px"></i></div>
+      GoGas Tracker
+    </div>
+    <div class="header-actions">
+      <button class="btn-header" onclick="loadAll()"><i class="ti ti-refresh"></i> <span>Refresh</span></button>
+      <button class="btn-header primary" onclick="openDelivery()"><i class="ti ti-plus"></i> Record Delivery</button>
+    </div>
+  </div>
+</header>
+
+<div class="sync-bar">
+  <div class="sync-bar-inner">
+    <div class="sync-dot loading" id="syncDot"></div>
+    <span id="syncLabel">Connecting to Google Sheets…</span>
+  </div>
+</div>
+
+<main class="main">
+  <div class="metrics" id="metrics">
+    <div class="metric"><div class="metric-val">—</div><div class="metric-lbl">Customers</div></div>
+    <div class="metric"><div class="metric-val">—</div><div class="metric-lbl">Full Cylinders Out</div></div>
+    <div class="metric"><div class="metric-val">—</div><div class="metric-lbl">Empties Pending</div></div>
+    <div class="metric"><div class="metric-val">—</div><div class="metric-lbl">Customers with Dues</div></div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('customers',this)"><i class="ti ti-users"></i> <span>Customers</span></button>
+    <button class="tab" onclick="switchTab('deliveries',this)"><i class="ti ti-truck"></i> <span>Deliveries</span></button>
+    <button class="tab" onclick="switchTab('empties',this)"><i class="ti ti-refresh"></i> <span>Empties</span></button>
+    <button class="tab" onclick="switchTab('log',this)"><i class="ti ti-history"></i> <span>Log</span></button>
+  </div>
+
+  <div id="customers" class="section active">
+    <div class="card">
+      <div class="filter-bar">
+        <input type="text" placeholder="Search by name, area, phone…" id="custSearch" oninput="renderCustomers()">
+        <select id="custFilter" onchange="renderCustomers()">
+          <option value="">All customers</option>
+          <option value="full">Has full cylinders</option>
+          <option value="due">Has empties due</option>
+        </select>
+        <button class="btn btn-sm-green" onclick="openAddCustomer()"><i class="ti ti-user-plus"></i> Add Customer</button>
+      </div>
+      <div class="table-wrap" id="custTable"><div class="empty-state"><i class="ti ti-loader"></i>Loading…</div></div>
+    </div>
+  </div>
+
+  <div id="deliveries" class="section">
+    <div class="card">
+      <div class="card-header">All deliveries</div>
+      <div class="table-wrap" id="deliveriesTable"><div class="empty-state"><i class="ti ti-loader"></i>Loading…</div></div>
+    </div>
+  </div>
+
+  <div id="empties" class="section">
+    <div class="card">
+      <div class="card-header">Pending empty returns</div>
+      <div class="table-wrap" id="emptiesTable"><div class="empty-state"><i class="ti ti-loader"></i>Loading…</div></div>
+    </div>
+  </div>
+
+  <div id="log" class="section">
+    <div class="card">
+      <div class="card-header">Activity log</div>
+      <div id="logList"><div class="empty-state"><i class="ti ti-loader"></i>Loading…</div></div>
+    </div>
+  </div>
+</main>
+
+<div class="modal-overlay" id="modalOverlay" onclick="handleOverlayClick(event)">
+  <div class="modal" id="modalBox"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API = 'https://script.google.com/macros/s/AKfycby2Ju9BYuHX18_XPKhAP31bNkjiVQyVKoqlxW8DL1EJkmLTg9McXXpW1nfQmJt6d2nK/exec';
+let STATE = { customers: [], deliveries: [], log: [] };
+let busy = false;
+let deferredPrompt = null;
+
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  document.getElementById('installBanner').classList.add('visible');
+});
+
+function installApp() {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  deferredPrompt.userChoice.then(() => {
+    deferredPrompt = null;
+    document.getElementById('installBanner').classList.remove('visible');
+  });
+}
+function dismissInstall() {
+  document.getElementById('installBanner').classList.remove('visible');
+}
+
+async function apiCall(params) {
+  const url = API + '?' + new URLSearchParams({ action: params.action });
+  const opts = params.action === 'getAll'
+    ? { method: 'GET' }
+    : { method: 'POST', body: JSON.stringify(params) };
+  const res = await fetch(url, opts);
+  return res.json();
+}
+
+function setSyncing(loading, msg, isError) {
+  const dot = document.getElementById('syncDot');
+  const lbl = document.getElementById('syncLabel');
+  dot.className = 'sync-dot' + (loading ? ' loading' : isError ? ' error' : '');
+  lbl.textContent = msg;
+}
+
+function showToast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast ' + (type || 'ok') + ' show';
+  setTimeout(() => t.className = 'toast ' + (type || 'ok'), 2800);
+}
+
+async function loadAll() {
+  setSyncing(true, 'Syncing with Google Sheets…', false);
+  try {
+    const data = await apiCall({ action: 'getAll' });
+    if (data.error) throw new Error(data.error);
+    STATE.customers = (data.customers || []).map(c => ({
+      ...c, id: String(c.id),
+      fullCylinders: Number(c.fullCylinders) || 0,
+      emptiesPending: Number(c.emptiesPending) || 0
+    }));
+    STATE.deliveries = (data.deliveries || []).map(d => ({ ...d, cylinders: Number(d.cylinders) || 0 }));
+    STATE.log = data.log || [];
+    setSyncing(false, 'Synced · ' + new Date().toLocaleTimeString(), false);
+    renderAll();
+  } catch (e) {
+    setSyncing(false, 'Sync failed — check Apps Script deployment', true);
+    showToast('Could not reach Google Sheets', 'err');
+  }
+}
+
+function updateMetrics() {
+  const totalFull = STATE.customers.reduce((s, c) => s + c.fullCylinders, 0);
+  const totalEmpty = STATE.customers.reduce((s, c) => s + c.emptiesPending, 0);
+  const custDue = STATE.customers.filter(c => c.emptiesPending > 0).length;
+  document.getElementById('metrics').innerHTML = `
+    <div class="metric"><div class="metric-val">${STATE.customers.length}</div><div class="metric-lbl">Customers</div></div>
+    <div class="metric"><div class="metric-val green">${totalFull}</div><div class="metric-lbl">Full Cylinders Out</div></div>
+    <div class="metric"><div class="metric-val amber">${totalEmpty}</div><div class="metric-lbl">Empties Pending</div></div>
+    <div class="metric"><div class="metric-val red">${custDue}</div><div class="metric-lbl">Customers with Dues</div></div>`;
+}
+
+function renderCustomers() {
+  const q = (document.getElementById('custSearch').value || '').toLowerCase();
+  const f = document.getElementById('custFilter').value;
+  const custs = STATE.customers.filter(c => {
+    const match = c.name.toLowerCase().includes(q) || (c.area||'').toLowerCase().includes(q) || (c.phone||'').includes(q);
+    if (!match) return false;
+    if (f === 'full') return c.fullCylinders > 0;
+    if (f === 'due') return c.emptiesPending > 0;
+    return true;
+  });
+  const el = document.getElementById('custTable');
+  if (!custs.length) { el.innerHTML = '<div class="empty-state"><i class="ti ti-users"></i>No customers found</div>'; return; }
+  el.innerHTML = `<table>
+    <thead><tr><th>Customer</th><th>Phone</th><th>Area</th><th>Full</th><th>Empties</th><th>Actions</th></tr></thead>
+    <tbody>${custs.map(c => `<tr>
+      <td style="font-weight:600">${c.name}</td>
+      <td style="font-family:'DM Mono',monospace;font-size:12px">${c.phone||'—'}</td>
+      <td>${c.area||'—'}</td>
+      <td><span class="badge ${c.fullCylinders > 0 ? 'badge-full' : 'badge-zero'}">${c.fullCylinders}</span></td>
+      <td><span class="badge ${c.emptiesPending > 0 ? 'badge-due' : 'badge-zero'}">${c.emptiesPending}</span></td>
+      <td><div class="td-actions">
+        <button class="btn" onclick="openDeliveryFor('${c.id}')"><i class="ti ti-truck"></i> Supply</button>
+        <button class="btn" onclick="openEmptyFor('${c.id}')"><i class="ti ti-refresh"></i> Empty</button>
+      </div></td>
+    </tr>`).join('')}</tbody></table>`;
+}
+
+function renderDeliveries() {
+  const el = document.getElementById('deliveriesTable');
+  const rows = STATE.deliveries.slice().reverse();
+  if (!rows.length) { el.innerHTML = '<div class="empty-state"><i class="ti ti-truck"></i>No deliveries yet</div>'; return; }
+  el.innerHTML = `<table>
+    <thead><tr><th>Date</th><th>Customer</th><th>Type</th><th>Qty</th><th>Note</th></tr></thead>
+    <tbody>${rows.map(d => `<tr>
+      <td style="font-family:'DM Mono',monospace;font-size:12px">${d.date||'—'}</td>
+      <td style="font-weight:500">${d.custName||'—'}</td>
+      <td><span class="badge ${d.type==='supply'?'badge-supply':'badge-return'}">${d.type==='supply'?'Supply':'Empty Return'}</span></td>
+      <td style="font-family:'DM Mono',monospace">${d.cylinders}</td>
+      <td style="color:var(--text-muted)">${d.note||'—'}</td>
+    </tr>`).join('')}</tbody></table>`;
+}
+
+function renderEmpties() {
+  const el = document.getElementById('emptiesTable');
+  const due = STATE.customers.filter(c => c.emptiesPending > 0);
+  if (!due.length) { el.innerHTML = '<div class="empty-state"><i class="ti ti-circle-check" style="color:var(--green)"></i>All empties collected!</div>'; return; }
+  el.innerHTML = `<table>
+    <thead><tr><th>Customer</th><th>Area</th><th>Phone</th><th>Empties Due</th><th>Action</th></tr></thead>
+    <tbody>${due.map(c => `<tr>
+      <td style="font-weight:600">${c.name}</td>
+      <td>${c.area||'—'}</td>
+      <td style="font-family:'DM Mono',monospace;font-size:12px">${c.phone||'—'}</td>
+      <td><span class="badge badge-due">${c.emptiesPending}</span></td>
+      <td><button class="btn btn-sm-green" onclick="openEmptyFor('${c.id}')"><i class="ti ti-refresh"></i> Collect</button></td>
+    </tr>`).join('')}</tbody></table>`;
+}
+
+function renderLog() {
+  const el = document.getElementById('logList');
+  if (!STATE.log.length) { el.innerHTML = '<div class="empty-state"><i class="ti ti-history"></i>No activity yet</div>'; return; }
+  el.innerHTML = STATE.log.slice().reverse().map(l => `
+    <div class="log-entry">
+      <div class="log-dot ${l.type==='supply'?'supply':'empty'}"></div>
+      <div><div class="log-text">${l.text}</div><div class="log-time">${l.time}</div></div>
+    </div>`).join('');
+}
+
+function renderAll() { updateMetrics(); renderCustomers(); renderDeliveries(); renderEmpties(); renderLog(); }
+function switchTab(id, btn) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+}
+function openModal(html) { document.getElementById('modalBox').innerHTML = html; document.getElementById('modalOverlay').classList.add('open'); }
+function closeModal() { document.getElementById('modalOverlay').classList.remove('open'); busy = false; }
+function handleOverlayClick(e) { if (e.target === document.getElementById('modalOverlay')) closeModal(); }
+
+function today() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function custOptions(selectedId) {
+  return STATE.customers.map(c => `<option value="${c.id}" ${c.id===selectedId?'selected':''}>${c.name}${c.area?' ('+c.area+')':''}</option>`).join('');
+}
+
+function openAddCustomer() {
+  openModal(`<div class="modal-title">Add customer</div>
+    <div class="form-row">
+      <div class="field"><label>Name</label><input id="m-name" placeholder="Full name" autofocus></div>
+      <div class="field"><label>Phone</label><input id="m-phone" placeholder="Mobile number" type="tel"></div>
+    </div>
+    <div class="form-row">
+      <div class="field"><label>Area / locality</label><input id="m-area" placeholder="e.g. Adyar"></div>
+      <div class="field"><label>Initial full cylinders</label><input id="m-full" type="number" min="0" value="0"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-save" id="m-submit" onclick="addCustomer()"><i class="ti ti-user-plus"></i> Add Customer</button>
+    </div>`);
+}
+
+async function addCustomer() {
+  if (busy) return;
+  const name = document.getElementById('m-name').value.trim();
+  const phone = document.getElementById('m-phone').value.trim();
+  const area = document.getElementById('m-area').value.trim();
+  const full = parseInt(document.getElementById('m-full').value) || 0;
+  if (!name || !phone) { showToast('Name and phone are required', 'err'); return; }
+  setBusy(true, 'Saving…'); busy = true;
+  try {
+    const r = await apiCall({ action: 'addCustomer', name, phone, area, fullCylinders: full });
+    if (r.error) throw new Error(r.error);
+    showToast('Customer added!', 'ok');
+    closeModal(); await loadAll();
+  } catch (e) { showToast('Error: ' + e.message, 'err'); setBusy(false, '<i class="ti ti-user-plus"></i> Add Customer'); busy = false; }
+}
+
+function openDelivery() {
+  openModal(`<div class="modal-title">Record delivery</div>
+    <div class="form-row-3">
+      <div class="field" style="grid-column:span 2"><label>Customer</label>
+        <select id="m-cust"><option value="">Select customer…</option>${custOptions('')}</select></div>
+      <div class="field"><label>Cylinders</label><input id="m-qty" type="number" min="1" value="1"></div>
+    </div>
+    <div class="form-row">
+      <div class="field"><label>Date</label><input id="m-date" type="date" value="${today()}"></div>
+      <div class="field"><label>Note (optional)</label><input id="m-note" placeholder="Remarks"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-save" id="m-submit" onclick="recordDelivery()"><i class="ti ti-truck"></i> Record Supply</button>
+    </div>`);
+}
+
+function openDeliveryFor(cid) {
+  openModal(`<div class="modal-title">Supply cylinders</div>
+    <div class="form-row">
+      <div class="field"><label>Customer</label>
+        <select id="m-cust">${custOptions(cid)}</select></div>
+      <div class="field"><label>Cylinders</label><input id="m-qty" type="number" min="1" value="1"></div>
+    </div>
+    <div class="form-row">
+      <div class="field"><label>Date</label><input id="m-date" type="date" value="${today()}"></div>
+      <div class="field"><label>Note (optional)</label><input id="m-note" placeholder="Remarks"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-save" id="m-submit" onclick="recordDelivery()"><i class="ti ti-truck"></i> Record Supply</button>
+    </div>`);
+}
+
+async function recordDelivery() {
+  if (busy) return;
+  const cid = document.getElementById('m-cust').value;
+  const qty = parseInt(document.getElementById('m-qty').value) || 0;
+  const date = document.getElementById('m-date').value;
+  const note = document.getElementById('m-note').value.trim();
+  if (!cid || qty < 1) { showToast('Select a customer and valid quantity', 'err'); return; }
+  const c = STATE.customers.find(x => x.id === cid);
+  setBusy(true, 'Saving…'); busy = true;
+  try {
+    const r = await apiCall({ action: 'recordDelivery', custId: cid, custName: c.name, cylinders: qty, date, note });
+    if (r.error) throw new Error(r.error);
+    showToast('Delivery recorded!', 'ok');
+    closeModal(); await loadAll();
+  } catch (e) { showToast('Error: ' + e.message, 'err'); setBusy(false, '<i class="ti ti-truck"></i> Record Supply'); busy = false; }
+}
+
+function openEmptyFor(cid) {
+  const c = STATE.customers.find(x => x.id === cid);
+  openModal(`<div class="modal-title">Collect empty cylinders</div>
+    <div style="background:var(--amber-light);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:14px;font-size:13px;color:var(--amber-dark)">
+      <strong>${c.name}</strong> · ${c.emptiesPending} empty cylinder${c.emptiesPending!==1?'s':''} pending collection
+    </div>
+    <div class="form-row">
+      <div class="field"><label>Empties collected</label><input id="m-eq" type="number" min="1" max="${c.emptiesPending||99}" value="${c.emptiesPending||1}"></div>
+      <div class="field"><label>Date</label><input id="m-date" type="date" value="${today()}"></div>
+    </div>
+    <div class="field" style="margin-bottom:0"><label>Note (optional)</label><input id="m-note" placeholder="Remarks"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-save" id="m-submit" onclick="recordEmpty('${cid}')"><i class="ti ti-refresh"></i> Record Collection</button>
+    </div>`);
+}
+
+async function recordEmpty(cid) {
+  if (busy) return;
+  const qty = parseInt(document.getElementById('m-eq').value) || 0;
+  const date = document.getElementById('m-date').value;
+  const note = document.getElementById('m-note').value.trim();
+  if (qty < 1) { showToast('Enter valid quantity', 'err'); return; }
+  const c = STATE.customers.find(x => x.id === cid);
+  setBusy(true, 'Saving…'); busy = true;
+  try {
+    const r = await apiCall({ action: 'recordEmpty', custId: cid, custName: c.name, cylinders: qty, date, note });
+    if (r.error) throw new Error(r.error);
+    showToast('Empty return recorded!', 'ok');
+    closeModal(); await loadAll();
+  } catch (e) { showToast('Error: ' + e.message, 'err'); setBusy(false, '<i class="ti ti-refresh"></i> Record Collection'); busy = false; }
+}
+
+function setBusy(on, label) {
+  const btn = document.getElementById('m-submit');
+  if (!btn) return;
+  btn.disabled = on;
+  btn.innerHTML = on ? `<span class="spinner"></span> ${label}` : label;
+}
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('gogas-sw.js').catch(() => {});
+  });
+}
+
+loadAll();
+</script>
+</body>
+</html>
