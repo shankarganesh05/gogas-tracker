@@ -734,7 +734,10 @@ async function recordDelivery() {
   try {
     const r = await apiCall({ action: 'recordDelivery', custId: cid, custName: c.name, cylinders: qty, date, note });
     if (r.error) throw new Error(r.error);
-    showToast('Delivery recorded!', 'ok');
+    // Update local state: Full Cylinders goes UP
+    c.fullCylinders += qty;
+    renderAll();
+    showToast('Delivery recorded! Full cylinders +' + qty, 'ok');
     closeModal(); await loadAll();
   } catch (e) { showToast('Error: ' + e.message, 'err'); setBusy(false, '<i class="ti ti-truck"></i> Record Supply'); busy = false; }
 }
@@ -742,7 +745,17 @@ async function recordDelivery() {
 function openEmptyFor(cid) {
   const c = STATE.customers.find(x => x.id === cid);
   openModal(`<div class="modal-title">Record empty cylinders collected</div>
-    <div style="font-size:13px;color:var(--text-muted);margin-bottom:14px">Customer: <strong style="color:var(--text)">${c.name}</strong></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
+      <div style="background:var(--green-light);border-radius:8px;padding:8px 12px;text-align:center">
+        <div style="font-size:20px;font-weight:600;color:var(--green-dark)">${c.fullCylinders}</div>
+        <div style="font-size:11px;color:var(--green-dark);margin-top:2px">Full cylinders</div>
+      </div>
+      <div style="background:var(--amber-light);border-radius:8px;padding:8px 12px;text-align:center">
+        <div style="font-size:20px;font-weight:600;color:var(--amber-dark)">${c.emptiesCollected}</div>
+        <div style="font-size:11px;color:var(--amber-dark);margin-top:2px">Empties collected</div>
+      </div>
+    </div>
+    <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">Recording empties will <strong style="color:var(--text)">decrease Full</strong> and <strong style="color:var(--text)">increase Empties Collected</strong></div>
     <div class="form-row">
       <div class="field"><label>Empties collected now</label><input id="m-eq" type="number" min="1" value="1" autofocus></div>
       <div class="field"><label>Date</label><input id="m-date" type="date" value="${today()}"></div>
@@ -765,7 +778,11 @@ async function recordEmpty(cid) {
   try {
     const r = await apiCall({ action: 'recordEmpty', custId: cid, custName: c.name, cylinders: qty, date, note });
     if (r.error) throw new Error(r.error);
-    showToast('Empty return recorded!', 'ok');
+    // Update local state: Empties Collected UP, Full Cylinders DOWN
+    c.emptiesCollected += qty;
+    c.fullCylinders = Math.max(0, c.fullCylinders - qty);
+    renderAll();
+    showToast('Empties collected +' + qty + ' · Full cylinders -' + qty, 'ok');
     closeModal(); await loadAll();
   } catch (e) { showToast('Error: ' + e.message, 'err'); setBusy(false, '<i class="ti ti-refresh"></i> Record Collection'); busy = false; }
 }
