@@ -9,6 +9,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="GoGas">
 <title>GoGas Cylinder Tracker</title>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <link rel="manifest" href="gogas-manifest.json">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -498,6 +501,9 @@ async function loadAll() {
     if (data.error) throw new Error(data.error);
     STATE.customers = (data.customers || []).map(c => ({
       ...c, id: String(c.id),
+      name: String(c.name||''),
+      phone: String(c.phone||''),
+      area: String(c.area||''),
       fullCylinders: Number(c.fullCylinders) || 0,
       emptiesCollected: Number(c.emptiesCollected) || 0
     }));
@@ -526,7 +532,10 @@ function renderCustomers() {
   const q = (document.getElementById('custSearch').value || '').toLowerCase();
   const f = document.getElementById('custFilter').value;
   const custs = STATE.customers.filter(c => {
-    const match = c.name.toLowerCase().includes(q) || (c.area||'').toLowerCase().includes(q) || (c.phone||'').includes(q);
+    const name = String(c.name||'').toLowerCase();
+    const area = String(c.area||'').toLowerCase();
+    const phone = String(c.phone||'');
+    const match = !q || name.includes(q) || area.includes(q) || phone.includes(q);
     if (!match) return false;
     if (f === 'full') return c.fullCylinders > 0;
     if (f === 'due') return c.emptiesCollected > 0;
