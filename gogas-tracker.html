@@ -390,14 +390,14 @@
   <div class="metrics" id="metrics">
     <div class="metric"><div class="metric-val">—</div><div class="metric-lbl">Customers</div></div>
     <div class="metric"><div class="metric-val">—</div><div class="metric-lbl">Full Cylinders Out</div></div>
-    <div class="metric"><div class="metric-val">—</div><div class="metric-lbl">Empties Pending</div></div>
+    <div class="metric"><div class="metric-val">—</div><div class="metric-lbl">Empties Collected</div></div>
     <div class="metric"><div class="metric-val">—</div><div class="metric-lbl">Customers with Dues</div></div>
   </div>
 
   <div class="tabs">
     <button class="tab active" onclick="switchTab('customers',this)"><i class="ti ti-users"></i> <span>Customers</span></button>
     <button class="tab" onclick="switchTab('deliveries',this)"><i class="ti ti-truck"></i> <span>Deliveries</span></button>
-    <button class="tab" onclick="switchTab('empties',this)"><i class="ti ti-refresh"></i> <span>Empties</span></button>
+    <button class="tab" onclick="switchTab('empties',this)"><i class="ti ti-refresh"></i> <span>Collected</span></button>
     <button class="tab" onclick="switchTab('log',this)"><i class="ti ti-history"></i> <span>Log</span></button>
   </div>
 
@@ -408,7 +408,7 @@
         <select id="custFilter" onchange="renderCustomers()">
           <option value="">All customers</option>
           <option value="full">Has full cylinders</option>
-          <option value="due">Has empties due</option>
+          <option value="due">Has empties collected</option>
         </select>
         <button class="btn btn-sm-green" onclick="openAddCustomer()"><i class="ti ti-user-plus"></i> Add Customer</button>
       </div>
@@ -425,7 +425,7 @@
 
   <div id="empties" class="section">
     <div class="card">
-      <div class="card-header">Pending empty returns</div>
+      <div class="card-header">Empties collected per customer</div>
       <div class="table-wrap" id="emptiesTable"><div class="empty-state"><i class="ti ti-loader"></i>Loading…</div></div>
     </div>
   </div>
@@ -499,7 +499,7 @@ async function loadAll() {
     STATE.customers = (data.customers || []).map(c => ({
       ...c, id: String(c.id),
       fullCylinders: Number(c.fullCylinders) || 0,
-      emptiesPending: Number(c.emptiesPending) || 0
+      emptiesCollected: Number(c.emptiesCollected) || 0
     }));
     STATE.deliveries = (data.deliveries || []).map(d => ({ ...d, cylinders: Number(d.cylinders) || 0 }));
     STATE.log = data.log || [];
@@ -513,13 +513,13 @@ async function loadAll() {
 
 function updateMetrics() {
   const totalFull = STATE.customers.reduce((s, c) => s + c.fullCylinders, 0);
-  const totalEmpty = STATE.customers.reduce((s, c) => s + c.emptiesPending, 0);
-  const custDue = STATE.customers.filter(c => c.emptiesPending > 0).length;
+  const totalEmpty = STATE.customers.reduce((s, c) => s + c.emptiesCollected, 0);
+  const custCollected = STATE.customers.filter(c => c.emptiesCollected > 0).length;
   document.getElementById('metrics').innerHTML = `
     <div class="metric"><div class="metric-val">${STATE.customers.length}</div><div class="metric-lbl">Customers</div></div>
     <div class="metric"><div class="metric-val green">${totalFull}</div><div class="metric-lbl">Full Cylinders Out</div></div>
-    <div class="metric"><div class="metric-val amber">${totalEmpty}</div><div class="metric-lbl">Empties Pending</div></div>
-    <div class="metric"><div class="metric-val red">${custDue}</div><div class="metric-lbl">Customers with Dues</div></div>`;
+    <div class="metric"><div class="metric-val amber">${totalEmpty}</div><div class="metric-lbl">Empties Collected</div></div>
+    <div class="metric"><div class="metric-val red">${custCollected}</div><div class="metric-lbl">Customers with Empties</div></div>`;
 }
 
 function renderCustomers() {
@@ -529,19 +529,19 @@ function renderCustomers() {
     const match = c.name.toLowerCase().includes(q) || (c.area||'').toLowerCase().includes(q) || (c.phone||'').includes(q);
     if (!match) return false;
     if (f === 'full') return c.fullCylinders > 0;
-    if (f === 'due') return c.emptiesPending > 0;
+    if (f === 'due') return c.emptiesCollected > 0;
     return true;
   });
   const el = document.getElementById('custTable');
   if (!custs.length) { el.innerHTML = '<div class="empty-state"><i class="ti ti-users"></i>No customers found</div>'; return; }
   el.innerHTML = `<table>
-    <thead><tr><th>Customer</th><th>Phone</th><th>Area</th><th>Full</th><th>Empties</th><th>Actions</th></tr></thead>
+    <thead><tr><th>Customer</th><th>Phone</th><th>Area</th><th>Full</th><th>Collected</th><th>Actions</th></tr></thead>
     <tbody>${custs.map(c => `<tr>
       <td style="font-weight:600">${c.name}</td>
       <td style="font-family:'DM Mono',monospace;font-size:12px">${c.phone||'—'}</td>
       <td>${c.area||'—'}</td>
       <td><span class="badge ${c.fullCylinders > 0 ? 'badge-full' : 'badge-zero'}">${c.fullCylinders}</span></td>
-      <td><span class="badge ${c.emptiesPending > 0 ? 'badge-due' : 'badge-zero'}">${c.emptiesPending}</span></td>
+      <td><span class="badge ${c.emptiesCollected > 0 ? 'badge-full' : 'badge-zero'}">${c.emptiesCollected}</span></td>
       <td><div class="td-actions">
         <button class="btn" onclick="openDeliveryFor('${c.id}')"><i class="ti ti-truck"></i> Supply</button>
         <button class="btn" onclick="openEmptyFor('${c.id}')"><i class="ti ti-refresh"></i> Empty</button>
@@ -567,16 +567,16 @@ function renderDeliveries() {
 
 function renderEmpties() {
   const el = document.getElementById('emptiesTable');
-  const due = STATE.customers.filter(c => c.emptiesPending > 0);
-  if (!due.length) { el.innerHTML = '<div class="empty-state"><i class="ti ti-circle-check" style="color:var(--green)"></i>All empties collected!</div>'; return; }
+  if (!STATE.customers.length) { el.innerHTML = '<div class="empty-state"><i class="ti ti-users"></i>No customers yet</div>'; return; }
   el.innerHTML = `<table>
-    <thead><tr><th>Customer</th><th>Area</th><th>Phone</th><th>Empties Due</th><th>Action</th></tr></thead>
-    <tbody>${due.map(c => `<tr>
+    <thead><tr><th>Customer</th><th>Area</th><th>Phone</th><th>Full Cylinders</th><th>Empties Collected</th><th>Action</th></tr></thead>
+    <tbody>${STATE.customers.map(c => `<tr>
       <td style="font-weight:600">${c.name}</td>
       <td>${c.area||'—'}</td>
       <td style="font-family:'DM Mono',monospace;font-size:12px">${c.phone||'—'}</td>
-      <td><span class="badge badge-due">${c.emptiesPending}</span></td>
-      <td><button class="btn btn-sm-green" onclick="openEmptyFor('${c.id}')"><i class="ti ti-refresh"></i> Collect</button></td>
+      <td><span class="badge ${c.fullCylinders > 0 ? 'badge-full' : 'badge-zero'}">${c.fullCylinders}</span></td>
+      <td><span class="badge ${c.emptiesCollected > 0 ? 'badge-full' : 'badge-zero'}">${c.emptiesCollected}</span></td>
+      <td><button class="btn btn-sm-green" onclick="openEmptyFor('${c.id}')"><i class="ti ti-refresh"></i> Record Empty</button></td>
     </tr>`).join('')}</tbody></table>`;
 }
 
@@ -621,9 +621,9 @@ function openAddCustomer() {
     </div>
     <div class="form-row">
       <div class="field"><label>Full cylinders with customer</label><input id="m-full" type="number" min="0" value="0"></div>
-      <div class="field"><label>Empties pending collection</label><input id="m-empties" type="number" min="0" value="0"></div>
+      <div class="field"><label>Empties collected so far</label><input id="m-empties" type="number" min="0" value="0"></div>
     </div>
-    <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;margin-top:-6px">Set empties if this customer already has cylinders to return</div>
+    <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;margin-top:-6px">Set if this customer has already returned cylinders</div>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeModal()">Cancel</button>
       <button class="btn-save" id="m-submit" onclick="addCustomer()"><i class="ti ti-user-plus"></i> Add Customer</button>
@@ -642,11 +642,11 @@ function openEditCustomer(cid) {
       <div class="field"></div>
     </div>
     <div style="background:var(--amber-light);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:10px;font-size:12px;color:var(--amber-dark)">
-      <strong>Correct cylinder counts below</strong> if the numbers shown are wrong
+      <strong>Correct the counts below</strong> if the numbers shown are wrong
     </div>
     <div class="form-row">
       <div class="field"><label>Full cylinders with customer</label><input id="m-full" type="number" min="0" value="${c.fullCylinders}"></div>
-      <div class="field"><label>Empties pending collection</label><input id="m-empties" type="number" min="0" value="${c.emptiesPending}"></div>
+      <div class="field"><label>Empties collected so far</label><input id="m-empties" type="number" min="0" value="${c.emptiesCollected}"></div>
     </div>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeModal()">Cancel</button>
@@ -664,7 +664,7 @@ async function addCustomer() {
   if (!name || !phone) { showToast('Name and phone are required', 'err'); return; }
   setBusy(true, 'Saving…'); busy = true;
   try {
-    const r = await apiCall({ action: 'addCustomer', name, phone, area, fullCylinders: full, emptiesPending: empties });
+    const r = await apiCall({ action: 'addCustomer', name, phone, area, fullCylinders: full, emptiesCollected: empties });
     if (r.error) throw new Error(r.error);
     showToast('Customer added!', 'ok');
     closeModal(); await loadAll();
@@ -681,7 +681,7 @@ async function updateCustomer(cid) {
   if (!name) { showToast('Name is required', 'err'); return; }
   setBusy(true, 'Saving…'); busy = true;
   try {
-    const r = await apiCall({ action: 'updateCustomer', id: cid, name, phone, area, fullCylinders: full, emptiesPending: empties });
+    const r = await apiCall({ action: 'updateCustomer', id: cid, name, phone, area, fullCylinders: full, emptiesCollected: empties });
     if (r.error) throw new Error(r.error);
     showToast('Customer updated!', 'ok');
     closeModal(); await loadAll();
@@ -741,12 +741,10 @@ async function recordDelivery() {
 
 function openEmptyFor(cid) {
   const c = STATE.customers.find(x => x.id === cid);
-  openModal(`<div class="modal-title">Collect empty cylinders</div>
-    <div style="background:var(--amber-light);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:14px;font-size:13px;color:var(--amber-dark)">
-      <strong>${c.name}</strong> · ${c.emptiesPending} empty cylinder${c.emptiesPending!==1?'s':''} pending collection
-    </div>
+  openModal(`<div class="modal-title">Record empty cylinders collected</div>
+    <div style="font-size:13px;color:var(--text-muted);margin-bottom:14px">Customer: <strong style="color:var(--text)">${c.name}</strong></div>
     <div class="form-row">
-      <div class="field"><label>Empties collected</label><input id="m-eq" type="number" min="1" max="${c.emptiesPending||99}" value="${c.emptiesPending||1}"></div>
+      <div class="field"><label>Empties collected now</label><input id="m-eq" type="number" min="1" value="1" autofocus></div>
       <div class="field"><label>Date</label><input id="m-date" type="date" value="${today()}"></div>
     </div>
     <div class="field" style="margin-bottom:0"><label>Note (optional)</label><input id="m-note" placeholder="Remarks"></div>
